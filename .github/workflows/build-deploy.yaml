@@ -12,7 +12,7 @@ name: Build and Deploy Application
 env:
   # This is the global resource prefix for this deployment
   # Use lower case letters and numbers only
-  DEPLOYMENT_NAME: "demo2267"
+  DEPLOYMENT_NAME: "demo3267"
 
   # Azure region to which the resources will be deployed
   DEPLOYMENT_REGION: "southcentralus"
