@@ -24,7 +24,7 @@ This is a quickstart template. It deploys the following:
 - Single Page Application (VueJS) that shows the content of the to-do lists
 - Azure Front Door instance exposing endpoints to the outside world
 
-> Refer to the [App Templates](https://github.com/microsoft/csu-digiapps-p-azaccel) repo Readme for more samples that are compatible with [AzureAccelerators](https://github.com/Azure/azure-dev/).
+> Refer to the [App Templates](https://github.com/microsoft/App-Templates) repo Readme for more samples that are compatible with [AzureAccelerators](https://github.com/Azure/azure-dev/).
 
 ## Prerequisites
 - Local shell with Azure CLI installed or [Azure Cloud Shell](https://ms.portal.azure.com/#cloudshell/)
