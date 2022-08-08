@@ -1,0 +1,24 @@
+.todoCanvasRoot {
+ 
+}
+
+.todolistFlexContainer {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.todolist {
+    width: 300px;
+    min-height: 300px;
+    background-color:rgb(255, 255, 153);
+    margin:35px;
+    filter: drop-shadow(10px 10px 10px #797979);
+}
+
+h3 {
+    padding:20px;
+}
+
+li {
+    text-align: left;
+}

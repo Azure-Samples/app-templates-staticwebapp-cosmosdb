@@ -1,0 +1,48 @@
+{
+  "name": "todolists",
+  "version": "0.2.0",
+  "description": "",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "author": "",
+  "dependencies": {
+    "@vue/apollo-composable": "^4.0.0-alpha.17",
+    "@vue/apollo-util": "^4.0.0-alpha.17",
+    "apollo-boost": "^0.4.9",
+    "graphql": "^15.8.0",
+    "vue": "^3.2.37",
+    "vue-apollo": "^3.1.0",
+    "vue-class-component": "^8.0.0-0"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-eslint": "~5.0.0",
+    "@vue/cli-plugin-typescript": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "@vue/eslint-config-standard": "^7.0.0",
+    "@vue/eslint-config-typescript": "^9.1.0",
+    "typescript": "~4.5.5"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential"
+    ],
+    "parserOptions": {
+      "parser": "@typescript-eslint/parser",
+      "ecmaVersion": 2020
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
