@@ -1,0 +1,9 @@
+{
+    "name": "Sampledata insertion script",
+    "dependencies": {
+        "@azure/cosmos": "^3.15.1"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.27"
+    }
+}

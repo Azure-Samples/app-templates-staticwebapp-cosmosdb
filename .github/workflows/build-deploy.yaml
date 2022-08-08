@@ -1,0 +1,244 @@
+# This workflow performs the following:
+# - Deploy Azure Resources
+# - Build the API and the Frontend
+# - Publish the API and the Frontend
+# - Insert sample data into CosmosDB
+#
+# Secrets required to be in place:
+# - AZURE_CREDENTIALS
+
+name: Build and Deploy Application
+
+env:
+  # This is the global resource prefix for this deployment
+  # Use lower case letters and numbers only
+  DEPLOYMENT_NAME: "demo2267"
+
+  # Azure region to which the resources will be deployed
+  DEPLOYMENT_REGION: "southcentralus"
+
+on:
+  # Triggers the workflow on push events on the main branch
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - '*.png'
+
+  # We also want to be able to run this manually from Github
+  workflow_dispatch:
+
+jobs:
+    deploy-infra:
+        name: Deploy Azure Resources
+        runs-on: ubuntu-latest
+        steps:
+
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+          
+        - name: 'Login via Azure CLI'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+            enable-AzPSSession: true 
+        
+        - name: Deploy Azure Resources
+          uses: azure/powershell@v1
+          id: azure-deploy
+          with: 
+            azPSVersion: "latest"
+            inlineScript: |
+              $params = @{
+                name = "${{env.DEPLOYMENT_NAME}}";
+              }
+              $deploymentName = ("{0}-{1}" -f "${{env.DEPLOYMENT_NAME}}", "${{env.DEPLOYMENT_REGION}}")
+              $res = New-AzDeployment -Name $deploymentName -TemplateFile "infra/main.bicep" -TemplateParameterObject $params -Location ${{env.DEPLOYMENT_REGION}}
+              
+              # Save the outputs from the deployment
+              # These contain the resource names we need for deploying
+              $outputsJson = $res.Outputs | ConvertTo-Json -Depth 10
+              $outputsJson | Out-File deploymentOutput.json
+
+              # Write the Front Door endpoint hostname to the step summary:
+              $endpointHostname = $res.Outputs.frontdoor_hostname.Value
+              "### Azure resource deployment complete :rocket:" | Out-File -Append -FilePath $Env:GITHUB_STEP_SUMMARY
+              "#### Your to-do list website can be found at https://$endpointHostname and will start working once the application deployment is complete." | Out-File -Append -FilePath $Env:GITHUB_STEP_SUMMARY
+
+        - name: Save deployment output
+          uses: actions/upload-artifact@v2
+          with:
+            name: deploymentOutput
+            path: deploymentOutput.json
+    
+    build-node:
+        name: Build API and Frontend
+        runs-on: ubuntu-latest
+        
+        steps:
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+
+        - name: 'Setup Node'
+          uses: actions/setup-node@v3
+          with:
+            node-version: '17'
+
+        - name: 'Build API'
+          run: |
+            npm install
+            npm run build
+          working-directory: src/api
+
+        - name: 'Build Frontend'
+          run: |
+            npm install
+            npm run build        
+          working-directory: src/web
+
+        - name: Save API build output
+          uses: actions/upload-artifact@v2
+          with:
+            name: buildApi
+            path: src/api/*
+
+        - name: Save frontend build output
+          uses: actions/upload-artifact@v2
+          with:
+            name: buildFrontend
+            path: src/web/dist/*
+
+    publish-api:
+        name: Publish API to Azure Function
+        needs: [deploy-infra, build-node]
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+
+        - name: 'Login via Azure CLI'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+            enable-AzPSSession: true 
+
+        - uses: actions/download-artifact@v2
+          with:
+            name: deploymentOutput
+
+        - uses: actions/download-artifact@v2
+          with:
+            name: buildApi   
+            path: src/api         
+
+        - name: 'Get function name from deployment'
+          id: function-metadata
+          uses: azure/powershell@v1
+          with: 
+            azPSVersion: "latest"
+            inlineScript: |
+              $deploymentOutput = Get-Content deploymentOutput.json | ConvertFrom-Json -Depth 10
+              $functionName = $deploymentOutput.function_name.Value
+              echo "::set-output name=function_name::$functionName"
+
+        - name: 'Publish Azure Function'
+          uses: Azure/functions-action@v1
+          with:
+            app-name: ${{ steps.function-metadata.outputs.function_name }}
+            package: src/api
+
+    publish-web:
+        name: Publish Website to Static Storage website
+        needs: [deploy-infra, build-node]
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+
+        - uses: actions/download-artifact@v2
+          with:
+            name: deploymentOutput
+
+        - uses: actions/download-artifact@v2
+          with:
+            name: buildFrontend
+            path: src/web/dist
+
+        - name: 'Login via Azure CLI'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+            enable-AzPSSession: true
+
+        - name: 'Get storage account name from deployment'
+          id: storage-name
+          uses: azure/powershell@v1
+          with: 
+            azPSVersion: "latest"
+            inlineScript: |
+              $deploymentOutput = Get-Content deploymentOutput.json | ConvertFrom-Json -Depth 10
+              $storageAccountName = $deploymentOutput.storage_account_name.Value
+              echo "::set-output name=storage_account_name::$storageAccountName"
+
+        - name: 'Copy files to Azure Storage'
+          uses: Azure/cli@v1
+          env:
+            STORAGE_ACCOUNT: ${{ steps.storage-name.outputs.storage_account_name }}
+          with:
+            inlineScript: |
+              az storage blob service-properties update --account-name ${STORAGE_ACCOUNT} --static-website --404-document index.html --index-document index.html
+              az storage blob upload-batch --auth-mode key --account-name ${STORAGE_ACCOUNT} --destination '$web' --source src/web/dist --overwrite true
+
+    insert-sampledata:
+        name: Insert sample data
+        needs: [deploy-infra]
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+
+        - uses: actions/download-artifact@v2
+          with:
+            name: deploymentOutput
+
+        - name: 'Setup Node'
+          uses: actions/setup-node@v3
+          with:
+            node-version: '16'
+
+        - name: 'Login via Azure CLI'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+            enable-AzPSSession: true
+
+        - name: 'Get CosmosDB ConnectionString'
+          id: get-connection-string
+          uses: azure/powershell@v1
+          with: 
+            azPSVersion: "latest"
+            inlineScript: |
+              $deploymentOutput = Get-Content deploymentOutput.json | ConvertFrom-Json -Depth 10
+              $cosmosName = $deploymentOutput.cosmosdb_name.Value
+              $rgName = $deploymentOutput.resource_group_name.Value
+
+              # This returns a list of all connection strings for the cosmosdb instance
+              $allConnectionStrings = (az cosmosdb keys list --name $cosmosName --resource-group $rgName --type connection-strings) | ConvertFrom-Json
+              
+              # The first item of the connectionStrings json array is the primary SQL connection string
+              $connectionString = $allConnectionStrings.connectionStrings[0].connectionString
+
+              # Hide the connectionString in the outputs from now on
+              echo "::add-mask::$connectionString"
+              echo "::set-output name=cosmos_connection_string::$connectionString"
+
+        - name: 'Insert sample data'
+          env:
+            COSMOS_CONNECTION_STRING: ${{ steps.get-connection-string.outputs.cosmos_connection_string }}
+          run: |
+            npm install
+            node insertdata.ts        
+          working-directory: src/database
