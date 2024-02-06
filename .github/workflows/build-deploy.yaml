@@ -140,7 +140,7 @@ jobs:
             inlineScript: |
               $deploymentOutput = Get-Content deploymentOutput.json | ConvertFrom-Json -Depth 10
               $functionName = $deploymentOutput.function_name.Value
-              echo "::set-output name=function_name::$functionName"
+              echo "function_name=$functionName" >> "$GITHUB_OUTPUT"
 
         - name: 'Publish Azure Function'
           uses: Azure/functions-action@v1
@@ -180,7 +180,7 @@ jobs:
             inlineScript: |
               $deploymentOutput = Get-Content deploymentOutput.json | ConvertFrom-Json -Depth 10
               $storageAccountName = $deploymentOutput.storage_account_name.Value
-              echo "::set-output name=storage_account_name::$storageAccountName"
+              echo "storage_account_name=$storageAccountName" >> "$GITHUB_OUTPUT"
 
         - name: 'Copy files to Azure Storage'
           uses: Azure/cli@v1
@@ -233,7 +233,7 @@ jobs:
 
               # Hide the connectionString in the outputs from now on
               echo "::add-mask::$connectionString"
-              echo "::set-output name=cosmos_connection_string::$connectionString"
+              echo "cosmos_connection_string=$connectionString" >> "$GITHUB_OUTPUT"
 
         - name: 'Insert sample data'
           env:
