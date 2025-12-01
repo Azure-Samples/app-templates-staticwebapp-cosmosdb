@@ -1,4 +1,8 @@
-Description: 
+# Archive Notice
+
+This repository has been archived and will no longer be maintained. It may still serve as a sample for learning purposes, but keep in mind that dependencies may be outdated and could contain security vulnerabilities. 
+
+# Description
 
 Creating a VueJS Single Page Application on a Static Web App, which queries CosmosDB data through a GraphQL endpoint hosted on an Azure Function
 --
